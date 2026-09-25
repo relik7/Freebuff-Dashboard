@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Freebuff — Activity</title>
+<link rel="stylesheet" href="/app.css">
+<link rel="stylesheet" href="/activity.css">
+<script>
+  var chosen = "system";
+  try {
+    chosen = localStorage.getItem("freebuff-search.theme") || "system";
+  } catch { }
+  if (chosen !== "light" && chosen !== "dark") {
+    chosen = window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark" : "light";
+  }
+  document.documentElement.setAttribute("data-theme", chosen);
+</script>
+</head>
+<body>
+<main class="page">
+
+  <div class="status-head">
+    <h2>Freebuff — Activity</h2>
+    <a class="side-new" href="/" title="Search the conversations"
+       aria-label="Search the conversations">
+      <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+        <circle cx="6.6" cy="6.6" r="4.6" fill="none" stroke="currentColor"
+                stroke-width="1.7"/>
+        <line x1="10.1" y1="10.1" x2="14.4" y2="14.4" stroke="currentColor"
+              stroke-width="1.7" stroke-linecap="round"/>
+      </svg>
+    </a>
+    <div class="head-right">
+      <span class="stamp" id="stamp"></span>
+      <span class="gear-wrap">
+        <button class="gear" id="gear" type="button" aria-haspopup="true"
+                aria-expanded="false" title="Settings">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M10.14 3.6L10.54 0.9A11.2 11.2 0 0 1 13.46 0.9L13.86 3.6A8.6 8.6 0 0 1 16.62 4.75L18.82 3.11A11.2 11.2 0 0 1 20.89 5.18L19.25 7.38A8.6 8.6 0 0 1 20.4 10.14L23.1 10.54A11.2 11.2 0 0 1 23.1 13.46L20.4 13.86A8.6 8.6 0 0 1 19.25 16.62L20.89 18.82A11.2 11.2 0 0 1 18.82 20.89L16.62 19.25A8.6 8.6 0 0 1 13.86 20.4L13.46 23.1A11.2 11.2 0 0 1 10.54 23.1L10.14 20.4A8.6 8.6 0 0 1 7.38 19.25L5.18 20.89A11.2 11.2 0 0 1 3.11 18.82L4.75 16.62A8.6 8.6 0 0 1 3.6 13.86L0.9 13.46A11.2 11.2 0 0 1 0.9 10.54L3.6 10.14A8.6 8.6 0 0 1 4.75 7.38L3.11 5.18A11.2 11.2 0 0 1 5.18 3.11L7.38 4.75A8.6 8.6 0 0 1 10.14 3.6Z"
+                  fill="none" stroke="currentColor" stroke-width="1.5"
+                  stroke-linejoin="round"/>
+            <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor"
+                    stroke-width="1.5"/>
+          </svg>
+        </button>
+        <div class="menu" id="menu" hidden>
+          <div class="menu-title">Theme</div>
+          <button class="menu-item" id="theme-light" type="button">
+            <span class="tick">✓</span>Light</button>
+          <button class="menu-item" id="theme-dark" type="button">
+            <span class="tick">✓</span>Dark</button>
+          <button class="menu-item" id="theme-system" type="button">
+            <span class="tick">✓</span>System</button>
+        </div>
+      </span>
+    </div>
+  </div>
+
+  <div class="band">
+    <div class="count">
+      <div class="num" id="count">—</div>
+      <div class="cap" id="cap">Threads running</div>
+    </div>
+    <div class="list" id="list"></div>
+  </div>
+
+</main>
+<script src="/activity.js"></script>
+</body>
+</html>

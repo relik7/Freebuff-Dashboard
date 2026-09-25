@@ -1,0 +1,244 @@
+@property --spin {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.page {
+  padding: 22px 28px 60px;
+}
+
+.status-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+.status-head h2 { font-size: 14px; margin: 0; font-weight: 600; }
+
+.head-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+.head-right .stamp {
+  color: var(--quiet);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.band {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 20px;
+  align-items: stretch;
+}
+
+/* The card hugs the figure it frames: IBM Plex Mono at 190px measures
+   ascent 175 / descent 48 / a figure's ink 121, so `line-height: .72`
+   leaves 11px of leading over the ink and 5 under it where .85 left 23
+   and 17, and the padding over the ink is 10 rather than 26. The frame
+   comes out 189px tall around a 121px figure where it stood 252px, and
+   `aspect-ratio: 1` makes the track that height wide, so the panel is a
+   189px square with the figure centred in it (measured on :8770). */
+.count {
+  background: var(--band);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  aspect-ratio: 1 / 1;
+  padding: 10px 16px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+}
+.count .num {
+  font-family: var(--mono);
+  font-size: 190px;
+  line-height: 0.72;
+  font-weight: 600;
+  color: var(--accent);
+}
+.count .cap {
+  margin-top: 6px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 15px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 5px 0;
+  overflow: hidden;
+}
+
+.row {
+  position: relative;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  border-radius: 7px;
+  padding: 12px 14px 12px 20px;
+  color: var(--text-3);
+  text-decoration: none;
+  cursor: pointer;
+  background: linear-gradient(90deg,
+    var(--edge) 0 8px, var(--selection) 8px 100%);
+}
+.row.from-agent { --edge: var(--accent); --edge-soft: var(--accent-soft); }
+.row.from-user { --edge: var(--bubble-me); --edge-soft: var(--bubble-me-soft); }
+.row.running {
+  background:
+    linear-gradient(90deg,
+      var(--edge) 0 8px,
+      var(--edge-soft) 8px 72%,
+      transparent 100%),
+    var(--selection);
+}
+
+.row:hover .title { text-decoration: underline; }
+
+.row .cell { flex: 1 1 auto; min-width: 0; }
+.row .title {
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.row .last {
+  margin-top: 6px;
+  color: var(--text-2);
+  font-size: 12.5px;
+  white-space: normal;
+  /* the who chip stands 15.5px tall and hangs 1.5px below a single 16.5px line
+     box, which the clamp's own `overflow: hidden` was cutting */
+  min-height: 19px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.row .last .who {
+  font-size: 10px;
+  font-family: var(--mono);
+  font-weight: 600;
+  border: 1px solid currentColor;
+  border-radius: 5px;
+  padding: 1px 5px;
+  margin-right: 7px;
+}
+.row.from-agent .last .who { color: var(--accent); }
+.row.from-user .last .who { color: var(--bubble-me); }
+
+.row .tail {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: flex-end;
+  text-align: right;
+  max-width: 38%;
+  min-width: 0;
+}
+.runtime {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--text-2);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+.runtime .clock {
+  flex: none;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.runtime .sep { color: var(--quiet); flex: none; }
+.runtime .model {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.row.running .runtime { color: var(--accent); }
+.rmeta {
+  color: var(--quiet);
+  font-size: 11px;
+  font-family: var(--mono);
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dot {
+  width: 7px; height: 7px; border-radius: 50%; flex: none;
+  background: var(--accent);
+  animation: beat 1.2s ease-in-out infinite;
+}
+@keyframes beat { 50% { opacity: 0.35; } }
+
+.row.done::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 7px;
+  padding: 2px;
+  background: conic-gradient(from var(--spin),
+    #ff4d4d, #ffb347, #ffe66d, #6df06d,
+    #59b4c9, #8a7dff, #ff6fd8, #ff4d4d);
+  filter: blur(3px);
+  animation: spin 2s linear infinite;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+@keyframes spin { to { --spin: 360deg; } }
+
+.row.done .runtime { color: var(--muted); }
+.row.done .title { color: var(--text-2); font-weight: 500; }
+
+.row.away {
+  transition: transform 1s ease-in, opacity 1s ease-in;
+  transform: translateX(110%);
+  opacity: 0.2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dot { animation: none; }
+  .row.done::after { animation: none; }
+  .row.away { transition: none; }
+}
+
+@media (max-width: 760px) {
+  .band { grid-template-columns: 1fr; }
+  /* one column, so a square would be as wide as the panel: the card keeps
+     its own content height and takes the width it is given */
+  .count { aspect-ratio: auto; }
+  .row .tail { max-width: 50%; }
+  .runtime .model, .runtime .sep { display: none; }
+}

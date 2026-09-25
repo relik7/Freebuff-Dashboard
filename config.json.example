@@ -1,0 +1,23 @@
+{
+  "//": "Copy to config.json to change a default; every key here is optional. It is read automatically when it sits in the folder you run from (or beside the launcher); --config <path> names a different file. The run log and /api/status both say which one was read.",
+  "//freebuff_config_root": "Where Freebuff Desktop keeps its profiles. null means the platform's own default: $XDG_CONFIG_HOME/freebuff-desktop when that variable holds an absolute path, otherwise ~/.config/freebuff-desktop (the same place on Windows). /api/status reports the root that was used.",
+  "//watch_seconds": "data.watch_seconds is the beat: on that interval the server re-reads the sources, writes each new, changed or removed project, thread and message count to logs/fb-dashboard-server.log tagged [watch], and pushes it to every open page over GET /api/events. It is the refresh behind both, not just a log. 0 turns the stream off, and a reload stays current either way because /api/projects and /api/status refresh before they answer.",
+  "//close_seconds": "activity.close_seconds is how long the activity page keeps a turn that has finished in front of the reader: the row glows in the spectrum that long, slides off the right over a second, and is then gone. 30 seconds unless you say otherwise (0 slides it off the moment it ends, 3600 is the longest allowed). /api/status reports the value that was used.",
+
+  "server":  { "host": "127.0.0.1", "port": 8770, "open_browser": true },
+  "data":    { "freebuff_config_root": null,
+               "projects": null,
+               "exclude": [],
+               "watch_seconds": 5 },
+  "activity":{ "close_seconds": 30 },
+  "index":   { "enabled": true,
+               "path": "index/freebuff-dashboard.db",
+               "categories": ["conversation"],
+               "refresh": "on-load",
+               "refresh_seconds": 10, "refresh_min_seconds": 10 },
+  "search":  { "mode": "words",
+               "scope": "all",
+               "categories": ["user", "assistant"],
+               "limit": 50, "snippet_chars": 240 },
+  "ui":      { "theme": "system", "hide_closed": false, "show_thinking": false }
+}

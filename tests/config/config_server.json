@@ -1,0 +1,16 @@
+{
+  "server":  { "host": "127.0.0.1", "port": 8770, "open_browser": true },
+  "data":    { "freebuff_config_root": null,
+               "projects": null,
+               "exclude": [] },
+  "index":   { "enabled": true,
+               "path": "index/freebuff-dashboard.db",
+               "categories": ["conversation"],
+               "refresh": "on-load",
+               "refresh_min_seconds": 30 },
+  "search":  { "mode": "words",
+               "scope": "all",
+               "roles": ["user", "assistant"],
+               "limit": 50, "snippet_chars": 240 },
+  "ui":      { "theme": "system", "hide_closed": false, "show_thinking": false }
+}
