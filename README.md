@@ -1,40 +1,52 @@
 # Freebuff Dashboard
 
-**Freebuff Dashboard** is a local, read-only view over the conversation
-databases Freebuff Desktop keeps on this machine. It discovers your projects,
-renders every thread in full and answers searches live — with no backend, no
-account, no writes to the databases it reads, and no dependencies beyond the
-Python standard library. Two views carry it: **Search**, one query across every
-project, and **Activity**, the board of the turns in flight.
+**Freebuff Dashboard** is a window into the conversations Freebuff Desktop keeps
+on your machine. It finds your projects, opens any thread in full, and searches
+across all of them at once — all locally, with nothing to sign in to, nothing to
+install, and no way for it to change the files it reads.
 
-> **Local-first:** everything runs on `127.0.0.1`; the source databases are
-> opened read-only with a denying authorizer, and the tool never reads
-> `state.json` or renders sponsored parts.
+Two screens carry it: **Search**, where one query looks through everything, and
+**Activity**, a live board of the turns that are running right now.
+
+> **It stays on your machine.** Everything runs at `127.0.0.1` — the address
+> that means *this computer* — and your conversations are opened read-only, so
+> the app cannot alter them even by accident. It never touches the file holding
+> your Freebuff login, and it skips the sponsored cards that sit alongside
+> conversations.
 >
-> **Standard library only:** Python 3.11+, no third-party packages, no build
-> step. The SQLite build's capabilities are probed at startup and reported by
-> `/api/status`.
+> If you elect to run this on `0.0.0.0` so your LAN can see the page, **you accept the risks**, 
+> because there is currently no security on the HTTP server it runs.  All of your Freebuff
+> threads will be available and searchable on your LAN.  
+>
+> **There is nothing to install.** Python 3.11 or newer is the entire
+> requirement: no extra packages, no build step. The app checks what your Python
+> and its SQLite can do as it starts, and adapts if either is older.
 
 ## The views
 
-**Global search** — one query over every project, with the two modes (*words*,
-*exact*), the scopes, the five categories and a date range as filters; an empty
-query is a browse.
+**Global search** — one box for every project. Type words or an exact phrase,
+then narrow things down with the scopes, the categories (*user messages, agent
+responses, thinking, tool runs, file changes*) and a date range. Leave the box
+empty and it simply browses.
 
 ![Global search: the query, the filters along the top and the results below](screenshots/global-search.jpg)
 
-**Thread view** — a whole conversation, turns paired by `seq`: user and agent
-prose as Markdown, every thinking part and tool call its own collapsed entry,
-and the files a turn changed as one diff card.
+**Thread view** — a whole conversation from start to finish. Your messages and
+the agent's replies read as ordinary text, and everything else — the thinking,
+the tool calls, the files a turn changed — folds away into its own entry, so it
+is there when you want it and out of the way when you don't.
 
 ![Thread view: one conversation, with its thinking, tool calls and diff card](screenshots/thread-view.jpg)
 
-**Activity view** — `/activity`, the turns in flight while they run, pushed over
-the same event stream. A row carries the thread's model, its message count and
-its newest message, glows when the turn ends, and is itself a link into that
-thread. This shot holds two rows: one thread still **running**, and one that has
-just **finished** — it stays on the board, tracking its newest message, while it
-waits out `activity.close_seconds` before its row is removed.
+![the activity glyph: a pulse inside a rounded square](screenshots/activity-glyph.svg)  **Activity view** — the page at `/activity`, a live board of the turns in
+flight. In the sidebar of the search page its control is a pulse inside a
+rounded square and clicking it opens the board.
+
+Each row shows the thread, its model and its newest message, and the row is
+itself a link into that conversation. When a turn finishes, its row glows for a
+moment, keeps up with the latest message, and then quietly slides away. The shot
+below holds two rows: one thread still **running**, and one just **finished**,
+waiting out `activity.close_seconds` (default 30s) before it goes.
 
 ![Activity view: a running thread beside a finished one waiting out the close timeout](screenshots/activity.jpg)
 
@@ -42,25 +54,21 @@ waits out `activity.close_seconds` before its row is removed.
 
 When you open the page, the server:
 
-1. **Discovers projects** — every `projects/*/project.json` under the Freebuff
-   Desktop config root, labelled by its `projectPath`.
-2. **Reads each database read-only** — `mode=ro` plus a SQLite authorizer that
-   denies writes, updates, deletes, drops and pragmas, so a bug cannot become a
-   write.
-3. **Renders conversations in full** — turns paired by `seq`, prose as
-   Markdown, every thinking part and tool call its own collapsed entry, a
-   turn's changed files as one diff card.
-4. **Searches live** — two modes (words and exact) across three scopes, with
-   five categories: *User messages*, *Agent responses*, *Thinking*, *Tool
-   runs*, *File diffs*; dates, *hide closed*, and an empty query as a browse.
-5. **Pushes refreshes** — a watch beat re-reads the sources on an interval and
-   pushes what changed to every open page over server-sent events; the page
-   never polls.
-6. **Draws the board** — `/activity` (or `python fb-dashboard.py --activity`) is
-   a live view of the turns in flight, pushed the same way: a turn that
-   finishes glows in the spectrum for `activity.close_seconds` seconds (30 by
-   default) and slides off, its row still tracking the newest message until the
-   board lets it go. Every row is a link into that thread.
+1. **Finds your projects** — it looks under the Freebuff Desktop settings folder
+   and picks up each project it finds, labelled the way you would recognise it.
+2. **Reads them without touching them** — every conversation database is opened
+   read-only, so nothing the app does can turn into a change to your data.
+3. **Shows whole conversations** — each thread in full: your messages and the
+   agent's replies as readable text, with the thinking, the tool calls and the
+   files a turn changed folded away beside them.
+4. **Searches as you type** — words or an exact phrase, across the scopes and
+   the five categories, with a date range and a *hide closed* switch; an empty
+   query browses instead.
+5. **Keeps itself current** — as Freebuff writes new messages, the page is
+   updated on its own. There is no refresh button to press.
+6. **Draws the activity board** — `/activity`, or `python fb-dashboard.py
+   --activity` to open straight onto it, shows the turns in flight the same
+   live way.
 
 ## Run
 
@@ -78,8 +86,9 @@ run.cmd
 ./run.sh
 ```
 
-Then browse to `http://127.0.0.1:8770` (the port comes from your config; the
-server binds loopback only and refuses `0.0.0.0`).
+Then open `http://127.0.0.1:8770` in your browser. The port comes from your
+settings, and the address means *this computer* — the app answers there and
+nowhere else.
 
 ### Try it without touching a real profile
 
@@ -88,10 +97,10 @@ run-mock.cmd        Windows
 ./run-mock.sh       Linux, macOS, WSL
 ```
 
-The mock launcher builds a mock Freebuff profile in the folder it runs from —
-three fictional projects with open, closed and archived threads — and serves it
-on `http://127.0.0.1:8771`. Real Freebuff profiles are never used, and nothing
-machine-specific ships inside the archive.
+The mock launcher builds a small pretend profile in the folder it runs from —
+three made-up projects with open, closed and archived threads — and serves that
+instead, on `http://127.0.0.1:8771`. None of your own conversations are read,
+and nothing specific to this machine travels inside the archive.
 
 ### Directly
 
@@ -101,74 +110,84 @@ python fb-dashboard.py --version
 python fb-dashboard.py --port 8800 --no-index
 ```
 
-Flags: `--host`, `--port`, `--config`, `--no-index` (live SQL only),
-`--activity` (start on the activity page of running turns instead of the
-search page), and `--version`, which prints the build identity — computed
-from content, not declared.
+A few options are worth knowing: `--host` and `--port` choose where it listens,
+`--config` names a particular settings file, `--no-index` searches your
+conversations directly and builds nothing in the background, `--activity` opens
+on the activity board instead of the search page, and `--version` tells you
+exactly which build you are running — worked out from the code itself rather
+than declared by hand.
 
 ## Configuration
 
-Copy `config.json.example` to `config.json` beside the launcher; every key is
-optional and documented in the file itself. That file is read whenever it is
-there — the tool looks in the folder it is run from first, then beside the
-launcher — and `--config <path>` names a different one instead. Whichever it
-reads is printed in the run log (`config: …`, or that no file was found) and
-reported by `/api/status` under `config.path`, so a setting that looks ignored
-is never a guess. The main keys:
+Copy `config.json.example` to `config.json` beside the launcher and it takes
+over from there. Every setting is optional, and each one carries its own
+explanation in the file. The app looks for `config.json` in the folder it is run
+from first, then beside the launcher; `--config <path>` names a different file
+instead. Whichever one it read is written into the run log, so a setting that
+seems to be ignored is never a mystery.
 
-- `server` — host, port, `open_browser`, `open_path` (what the browser is
-  opened on; `/activity` is the activity page).
-- `data` — `freebuff_config_root` (where the profiles live; the default is the
-  platform's own config home and `/api/status` reports what was chosen),
-  `projects`, `exclude`, and `watch_seconds`, the beat that drives the push.
-- `activity` — `close_seconds`: how long the activity page keeps a turn that
-  has finished in front of you before its row is removed, in seconds (`30` by
-  default, `0` slides it off at once). `/api/status` reports the value in use.
-- `search` — default mode, scope, categories, result limit, snippet length.
-- `ui` — theme, `hide_closed`.
+The keys you are most likely to change:
 
-Search runs live over the databases today; the ranked conversation index is
-future work, and `--no-index` keeps the tool off the index entirely.
+- `server` — the host and port it listens on, whether a browser opens for you,
+  and which page it opens on (`/activity` for the board).
+- `data` — where your Freebuff profiles live (the app works this out for you by
+  default), which projects to include or skip, and how often to check for new
+  messages.
+- `activity` — `close_seconds`: how long a finished turn stays on the board
+  before its row disappears, in seconds (`30` by default; `0` clears it right
+  away).
+- `search` — the starting point for a new search: its mode, scope, categories,
+  how many results to show, and how much of each to display.
+- `ui` — the theme, and whether closed threads are hidden.
+
+Today the search runs against your conversations directly. A faster pre-built
+index is planned for later, and `--no-index` keeps the app off it meanwhile.
 
 ## Layout
 
+A quick tour of what is in the folder:
+
 ```
-fb-dashboard.py               entry point and CLI
-dashboard/
-├── app.py                    HTTP server, routes, the event stream
-├── board.py                  the board: the turns in flight, live
-├── build_id.py               content-computed build identity
-├── config.py                 config loading and the profile root
-├── corpus.py                 SQL over the sources, schema aliases
-├── fleet.py                  discovery, read-only connections
-├── markdown.py               escape-first Markdown renderer
-├── reader.py                 rows become conversations, entries, diffs
-├── search.py                 live search, categories, filters
-├── watch.py                  the beat that pushes refreshes
-└── pages/                    index.html, app.css, app.js — the served UI,
-                              activity.html, activity.css, activity.js — the
-                              board
+fb-dashboard.py               the program you run: starts the server, reads your settings
+dashboard/                    the application itself
+├── app.py                    the web server, its routes, and the live update stream
+├── board.py                  builds the activity board: the turns running right now
+├── build_id.py               works out which build is running, from its contents
+├── config.py                 loads your settings and finds your Freebuff profiles
+├── corpus.py                 the queries that read your conversations
+├── fleet.py                  finds your projects and opens them read-only
+├── markdown.py               turns stored text into readable messages
+├── reader.py                 assembles a thread into the conversation you see
+├── search.py                 the search itself: filters, matching, snippets
+├── watch.py                  watches for new messages and pushes them to the page
+└── pages/                    the pages you actually look at: the search app
+                              (index.html, app.css, app.js) and the board
+                              (activity.html, activity.css, activity.js)
 tools/
-└── make_test_profile.py      builds the mock Freebuff profile
-tests/
-├── run_tests.py              the runner
+└── make_test_profile.py      builds the pretend profile the mock launcher uses
+tests/                        the automatic checks that keep the app honest
+├── run_tests.py              runs them all
 ├── fixture.py, harness.py, stamps.py, suites.py, testlog.py
-├── config/                   fixtures the gates run the tool with
-└── test_*.py                 the gates
-config.json.example           every default, documented
-run.cmd, run.sh               start the server
-run-mock.cmd, run-mock.sh     mock profile + server
-screenshots/                  the three views above
+│                             the shared plumbing the checks rely on
+├── config/                   sample settings the checks run the app with
+└── test_*.py                 the checks themselves
+config.json.example           every setting, each with a note explaining it
+run.cmd, run.sh               the friendly way in: start the server
+run-mock.cmd, run-mock.sh     start it against a pretend profile instead
+screenshots/                  the three views shown above
 ```
 
 ## The guarantees
 
-- **Read-only on the source databases.** `mode=ro` with a denying authorizer on
-  every connection; `tests/test_readonly.py` hashes the databases before and
-  after a full session and fails on any change.
-- **`state.json` is never read** — it holds bearer tokens — and **sponsored
-  parts are never indexed or rendered**; both are structural, not filters.
-- **Loopback only.** The server binds `127.0.0.1` and refuses `0.0.0.0`; a
-  second start on the same port fails in `bind()` by design.
-- **Degrades, never assumes.** The interpreter, the SQLite build and its
-  capabilities are probed at startup and reported by `/api/status`.
+- **Your conversations cannot be changed.** Every conversation database is
+  opened read-only, and a check hashes them all before and after a full session,
+  failing if even one byte moves.
+- **Your login is left alone.** The file holding your Freebuff credentials is
+  never opened, and the sponsored cards that sit alongside conversations are
+  never read or shown. Both are boundaries in the code, not settings to trust.
+- **Only you can reach it.** The app listens on `127.0.0.1` — *this computer* —
+  and refuses to answer the wider network. Starting it twice on the same port
+  simply fails rather than quietly giving way.
+- **It tells you what it found.** At startup it checks your Python, your SQLite,
+  and what that SQLite can do, then reports the results, so it can fall back to
+  something slower instead of quietly breaking.
