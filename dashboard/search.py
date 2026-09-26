@@ -379,17 +379,21 @@ def search(fleet, filters: Filters) -> dict:
             extra_params=extra_params)
         branches.append((project, sql, branch_params))
 
-    con = fleet.connection()
     rows: list = []
     total = 0
     for project, sql, branch_params in branches:
-        try:
-            count = execute(con, f"SELECT COUNT(*) AS n FROM ({sql})",
-                            branch_params)[0]["n"]
+        def gather(connection, sql=sql, params=branch_params,
+                   limit=filters.offset + filters.limit):
+            count = execute(connection, f"SELECT COUNT(*) AS n FROM ({sql})",
+                            params)[0]["n"]
             page = execute(
-                con,
+                connection,
                 f"SELECT * FROM ({sql}) ORDER BY ts DESC, seq DESC LIMIT ?",
-                [*branch_params, filters.offset + filters.limit])
+                [*params, limit])
+            return count, page
+
+        try:
+            count, page = fleet.read(project, gather)
         except sqlite3.DatabaseError as exc:
             fleet.mark_schema_warning(project, exc)
             continue

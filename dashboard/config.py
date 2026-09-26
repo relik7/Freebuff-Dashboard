@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import ipaddress
 import json
 import os
 from pathlib import Path
@@ -24,7 +25,7 @@ DEFAULTS = {
     "server": {"host": LOOPBACK, "port": DEFAULT_PORT, "open_browser": True,
                "open_path": "/"},
     "data": {"freebuff_config_root": None, "projects": None, "exclude": [],
-             "watch_seconds": 5},
+             "watch_seconds": 1},
     "activity": {"close_seconds": DEFAULT_CLOSE_SECONDS},
     "index": {"enabled": True, "path": "index/freebuff-dashboard.db",
               "categories": ["conversation"], "refresh": "on-load",
@@ -99,7 +100,38 @@ def deep_merge(base: dict, extra: dict) -> dict:
             base[key] = value
     return base
 
-def load(path: str | Path | None = None) -> dict:
+def address_of(text: str):
+    try:
+        found = ipaddress.ip_address(str(text).strip())
+    except ValueError:
+        return None
+    if isinstance(found, ipaddress.IPv6Address) and found.ipv4_mapped is not None:
+        return found.ipv4_mapped
+    return found
+
+def parse_allowed_hosts(values) -> frozenset:
+    found = set()
+    for value in values or ():
+        for piece in str(value).split(","):
+            text = piece.strip()
+            if not text:
+                continue
+            address = address_of(text)
+            if address is None:
+                raise ConfigError(f"--allowed-hosts {text!r} is not an IP "
+                                  f"address")
+            found.add(address)
+    return frozenset(found)
+
+def client_allowed(client: str, allowed) -> bool:
+    if allowed is None:
+        return True
+    address = address_of(client)
+    if address is None:
+        return False
+    return address.is_loopback or address in allowed
+
+def load(path: str | Path | None = None, *, allow_remote: bool = False) -> dict:
     found = copy.deepcopy(DEFAULTS)
     if path is not None:
         target = Path(path)
@@ -115,17 +147,19 @@ def load(path: str | Path | None = None) -> dict:
             raise ConfigError(f"config {target} must be a JSON object, "
                               f"not {type(raw).__name__}")
         deep_merge(found, raw)
-    validate(found)
+    validate(found, allow_remote=allow_remote)
     return found
 
-def validate(config: dict) -> None:
+def validate(config: dict, *, allow_remote: bool = False) -> None:
     server = config.get("server") or {}
     host = server.get("host", LOOPBACK)
-    if host != LOOPBACK:
+    if host != LOOPBACK and not allow_remote:
         raise ConfigError(
-            f"host {host!r} is refused: this tool binds {LOOPBACK} only and never "
-            f"0.0.0.0, so nothing on the network can reach a "
-            f"transcript")
+            f"host {host!r} is refused: this tool has no security of its own "
+            f"and would expose every conversation to anyone who can reach the "
+            f"port, so it binds {LOOPBACK} only. Binding it to a wider "
+            f"interface is a deliberate act: pass --i-know-the-security-risks, "
+            f"and read README.md's network section first.")
     port = server.get("port", DEFAULT_PORT)
     if isinstance(port, bool) or not isinstance(port, int) \
             or not 1 <= port <= 65535:

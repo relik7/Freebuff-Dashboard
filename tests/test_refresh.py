@@ -183,10 +183,10 @@ def main() -> int:
                                                       "turn_state")),
               str(lines))
 
-        attached = fleet.connection()
         check("the shared connection reads the fixture before anything is added",
-              attached.execute(f"select count(*) from {alpha.key}.messages"
-                               ).fetchone()[0] > 0)
+              fleet.read(alpha, lambda connection: connection.execute(
+                  f"select count(*) from {alpha.key}.messages")
+                  .fetchone()[0]) > 0)
 
         add_project(DATA, NEW_PROJECT, NEW_WORKSPACE, NEW_PROJECT_THREAD)
         lines = fleet.refresh()
@@ -205,9 +205,9 @@ def main() -> int:
         added = fleet.by_label("Aaa")
         check("the key names a project's own database, not a neighbour's",
               added is not None and added.readable
-              and fleet.connection() is not attached
-              and fleet.connection().execute(
-                  f"select count(*) from {added.key}.messages").fetchone()[0] == 1,
+              and fleet.read(added, lambda connection: connection.execute(
+                  f"select count(*) from {added.key}.messages")
+                  .fetchone()[0]) == 1,
               f"{added and added.key}")
 
         port = harness.free_port()

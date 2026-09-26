@@ -20,7 +20,7 @@ from . import config as config_module
 from . import corpus
 from . import search as search_module
 from .build_id import describe
-from .fleet import Fleet
+from .fleet import Fleet, attached_ceiling
 from .reader import ReaderError, thread as read_thread
 from .watch import Watcher
 
@@ -52,7 +52,8 @@ def _one(query: dict, name: str, default=None):
 @lru_cache(maxsize=1)
 def capabilities() -> dict:
     found = {"sqlite_version": sqlite3.sqlite_version, "json": False,
-             "fts5": False, "trigram": False}
+             "fts5": False, "trigram": False,
+             "attached_limit": attached_ceiling()}
     con = sqlite3.connect(":memory:")
     try:
         try:
@@ -107,12 +108,13 @@ class Logger:
 
 class Router:
     def __init__(self, fleet: Fleet, config: dict, log=None, watcher=None,
-                 config_path: str | None = None) -> None:
+                 config_path: str | None = None, allowed_hosts=None) -> None:
         self.fleet = fleet
         self.config = config
         self.log = log or (lambda message: None)
         self.watcher = watcher
         self.config_path = config_path
+        self.allowed_hosts = allowed_hosts
 
     def refresh_fleet(self) -> list[str]:
         if self.watcher is not None:
@@ -258,6 +260,19 @@ class Router:
                       "cached, so a reload of /api/projects shows this already",
         })
 
+    def access(self) -> dict:
+        host = str(self.config["server"]["host"])
+        if self.allowed_hosts is not None:
+            mode = "allowlist"
+        elif host == config_module.LOOPBACK:
+            mode = "loopback"
+        else:
+            mode = "open"
+        return {"host": host, "port": self.config["server"]["port"],
+                "mode": mode,
+                "allowed_hosts": sorted(str(address) for address
+                                        in (self.allowed_hosts or ()))}
+
     def status(self) -> dict:
         projects = []
         for project in self.fleet.projects:
@@ -269,10 +284,12 @@ class Router:
             if project.readable and not project.schema_limited:
                 table = project.schema["tables"]["messages"]
                 seq = project.schema["columns"]["messages"]["seq"]
+                query = (f"select coalesce(max({corpus.quote(seq)}),0)"
+                         f" from {project.key}.{corpus.quote(table)}")
                 try:
-                    row["max_seq"] = self.fleet.connection().execute(
-                        f"select coalesce(max({corpus.quote(seq)}),0)"
-                        f" from {project.key}.{corpus.quote(table)}").fetchone()[0]
+                    row["max_seq"] = self.fleet.read(
+                        project, lambda connection, query=query:
+                        connection.execute(query).fetchone()[0])
                 except sqlite3.Error:
                     row["max_seq"] = None
             projects.append(row)
@@ -281,9 +298,11 @@ class Router:
             "build": describe(),
             "data_root": str(config_module.root_of(self.config)),
             "config": {"path": self.config_path},
+            "server": self.access(),
             "schema": {"limited": self.fleet.has_schema_warning(),
                        "details": self.fleet.schema_warning_details()},
-            "sqlite": capabilities(),
+            "sqlite": {**capabilities(),
+                       "attach_groups": len(self.fleet.groups())},
             "watch": {"seconds": self.watcher.seconds if self.watcher else 0.0,
                       "stream": bool(self.watcher and self.watcher.seconds > 0)},
             "activity": {"close_seconds": config_module.close_seconds(self.config)},
@@ -378,7 +397,16 @@ class Handler(BaseHTTPRequestHandler):
             self.server.log(f"the board could not be read for a push: {exc}")
         return payload
 
+    def admitted(self) -> bool:
+        address = self.client_address[0] if self.client_address else ""
+        return config_module.client_allowed(address, self.server.allowed_hosts)
+
     def respond(self, method: str) -> None:
+        if not self.admitted():
+            self.plain(403, "this host may not connect: --allowed-hosts named "
+                            "the addresses that may, and this is not one of "
+                            "them", json_body=False)
+            return
         parsed = urlsplit(self.path)
         if unquote(parsed.path) == "/api/events":
             self.stream_events(method)
@@ -411,11 +439,14 @@ class Handler(BaseHTTPRequestHandler):
 class Server(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = sys.platform != "win32"
+    allowed_hosts = None
 
-    def __init__(self, address, handler, *, router: Router, log) -> None:
+    def __init__(self, address, handler, *, router: Router, log,
+                 allowed_hosts=None) -> None:
         super().__init__(address, handler)
         self.router = router
         self.log = log
+        self.allowed_hosts = allowed_hosts
 
     def handle_error(self, request, client_address) -> None:
         self.log(f"request error from {client_address}:\n"
@@ -433,22 +464,37 @@ def _force_utf8_output() -> None:
         except (AttributeError, ValueError):
             pass
 
-def serve(config: dict, config_path: str | None = None) -> int:
+def access_note(host: str, allowed) -> str:
+    if allowed is not None:
+        names = ", ".join(sorted(str(address) for address in allowed))
+        return (f"{config_module.LOOPBACK} and {names} only" if names
+                else f"{config_module.LOOPBACK} only")
+    if str(host) in (config_module.LOOPBACK, "::1", "localhost"):
+        return "this machine only"
+    return ("any host that can reach the port, and there is no security on "
+            "this server")
+
+def serve(config: dict, config_path: str | None = None, *,
+          allowed_hosts=None) -> int:
     _force_utf8_output()
     host = config["server"]["host"]
     port = int(config["server"]["port"])
     log = Logger()
     fleet = Fleet(config)
     watcher = Watcher(config, fleet, log)
-    router = Router(fleet, config, log, watcher, config_path=config_path)
+    router = Router(fleet, config, log, watcher, config_path=config_path,
+                    allowed_hosts=allowed_hosts)
     try:
-        server = Server((host, port), Handler, router=router, log=log)
+        server = Server((host, port), Handler, router=router, log=log,
+                        allowed_hosts=allowed_hosts)
     except OSError as exc:
         log(f"cannot bind {host}:{port}: {exc}")
         fleet.close()
         log.close()
         return 2
     bound_host, bound_port = server.server_address[:2]
+    reachable = (config_module.LOOPBACK
+                 if str(bound_host) in ("0.0.0.0", "::", "") else bound_host)
     start_path = str(config["server"].get("open_path") or "/")
     unreadable = sum(1 for project in fleet.projects if project.unreadable)
     log(f"freebuff-dashboard {describe()}")
@@ -458,17 +504,20 @@ def serve(config: dict, config_path: str | None = None) -> int:
     log(f"log: {log.path}")
 
     log(f"serving on http://{bound_host}:{bound_port}")
+    if str(reachable) != str(bound_host):
+        log(f"on this machine: http://{reachable}:{bound_port}")
+    log(f"who may connect: {access_note(host, allowed_hosts)}")
     if start_path != "/":
-        log(f"what it opens on: http://{bound_host}:{bound_port}{start_path}")
+        log(f"what it opens on: http://{reachable}:{bound_port}{start_path}")
     watcher.start()
     if config["server"].get("open_browser"):
         if display_available():
             threading.Thread(target=webbrowser.open,
-                             args=(f"http://{bound_host}:{bound_port}{start_path}",),
+                             args=(f"http://{reachable}:{bound_port}{start_path}",),
                              daemon=True).start()
         else:
             log("open_browser is on, but there is no display here: browse to "
-                f"http://{bound_host}:{bound_port}{start_path} yourself")
+                f"http://{reachable}:{bound_port}{start_path} yourself")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

@@ -29,7 +29,9 @@ def count_with(fleet: Fleet, predicate: str) -> int:
         sql = (f"select count(*) as n from {project.key}.messages m,"
                f" json_each(m.parts_json) p"
                f" where json_extract(p.value,'$.kind') = 'text' and {predicate}")
-        total += fleet.connection().execute(sql).fetchone()["n"]
+        total += fleet.read(
+            project, lambda connection, sql=sql:
+            connection.execute(sql).fetchone()["n"])
     return total
 
 def rows_with(fleet: Fleet, predicate: str) -> list:
@@ -38,7 +40,9 @@ def rows_with(fleet: Fleet, predicate: str) -> list:
         sql = (f"select json_extract(p.value,'$.text') as text"
                f" from {project.key}.messages m, json_each(m.parts_json) p"
                f" where json_extract(p.value,'$.kind') = 'text' and {predicate}")
-        found.extend(fleet.connection().execute(sql).fetchall())
+        found.extend(fleet.read(
+            project, lambda connection, sql=sql:
+            connection.execute(sql).fetchall()))
     return found
 
 def main() -> int:

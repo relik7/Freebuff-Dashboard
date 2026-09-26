@@ -14,8 +14,22 @@ def parser() -> argparse.ArgumentParser:
                     "Freebuff Desktop conversation databases",
         formatter_class=argparse.RawDescriptionHelpFormatter)
     found.add_argument("--host", default=None,
-                       help=f"interface to bind (default {LOOPBACK}; "
-                            "0.0.0.0 is refused)")
+                       help=f"interface to bind (default {LOOPBACK}); a "
+                            "wider address is refused unless "
+                            "--i-know-the-security-risks is given")
+    found.add_argument("--i-know-the-security-risks", action="store_true",
+                       help="allow binding a wider interface than "
+                            f"{LOOPBACK}. This server has no security of its "
+                            "own: anyone who can reach the port can read and "
+                            "search every conversation. Pair it with "
+                            "--allowed-hosts to limit who may connect")
+    found.add_argument("--allowed-hosts", action="append",
+                       metavar="IP[,IP...]",
+                       help=f"restrict connections to {LOOPBACK} and these "
+                            "addresses instead of letting any host connect. "
+                            "Separate addresses with commas or repeat the "
+                            "option. Takes effect with a wider "
+                            "--host (or a config.json naming one)")
     found.add_argument("--port", type=int, default=None,
                        help=f"port to bind (default {DEFAULT_PORT})")
     found.add_argument("--config",
@@ -46,7 +60,7 @@ def main(argv: list[str] | None = None) -> int:
 
     source = args.config or config_module.default_path()
     try:
-        config = load(source)
+        config = load(source, allow_remote=args.i_know_the_security_risks)
     except ConfigError as exc:
         print(f"fb-dashboard: {exc}", file=sys.stderr)
         return 2
@@ -60,14 +74,17 @@ def main(argv: list[str] | None = None) -> int:
     if args.activity:
         config["server"]["open_path"] = "/activity"
     try:
-        validate(config)
+        validate(config, allow_remote=args.i_know_the_security_risks)
+        allowed_hosts = (config_module.parse_allowed_hosts(args.allowed_hosts)
+                         if args.allowed_hosts is not None else None)
     except ConfigError as exc:
         print(f"fb-dashboard: {exc}", file=sys.stderr)
         return 2
 
     from dashboard.app import serve
 
-    return serve(config, str(source) if source is not None else None)
+    return serve(config, str(source) if source is not None else None,
+                 allowed_hosts=allowed_hosts)
 
 if __name__ == "__main__":
     sys.exit(main())

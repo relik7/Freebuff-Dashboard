@@ -28,7 +28,9 @@ def records(fleet: Fleet, kinds: tuple) -> list:
     found = []
     for project in fleet.readable():
         sql, params = corpus.record_select(project.key, kinds=kinds)
-        found.extend(fleet.connection().execute(sql, params).fetchall())
+        found.extend(fleet.read(
+            project, lambda connection, sql=sql, params=params:
+            connection.execute(sql, params).fetchall()))
     return found
 
 def main() -> int:

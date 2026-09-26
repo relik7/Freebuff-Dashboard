@@ -61,14 +61,20 @@ COLUMN_DEFAULTS = {
 def quote(name: str) -> str:
     return '"' + name.replace('"', '""') + '"'
 
-def inspect_schema(con) -> dict:
+def data_version(con, source: str | None = None) -> int:
+    prefix = f"{source}." if source else ""
+    return int(con.execute(f"pragma {prefix}data_version").fetchone()[0])
+
+def inspect_schema(con, source: str | None = None) -> dict:
+    prefix = f"{source}." if source else ""
     names = [row[0] for row in con.execute(
-        "select name from sqlite_master where type in ('table','view')")]
+        f"select name from {prefix}sqlite_master"
+        " where type in ('table','view')")]
     catalog = {}
     for name in names:
         escaped = name.replace("'", "''")
         catalog[name] = {row[1] for row in con.execute(
-            f"pragma table_info('{escaped}')")}
+            f"pragma {prefix}table_info('{escaped}')")}
     tables = {logical: next((candidate for candidate in aliases
                              if candidate in catalog), None)
               for logical, aliases in TABLE_ALIASES.items()}

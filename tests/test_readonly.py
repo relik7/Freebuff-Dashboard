@@ -162,8 +162,9 @@ def main() -> int:
            ))
         check("the in-process search answers through the read-only connection",
               answer["total"] >= 1, str(answer)[:160])
-        fleet.connection().execute(
-            f"select count(*) from {fleet.projects[0].key}.messages").fetchall()
+        first = fleet.projects[0]
+        fleet.read(first, lambda connection: connection.execute(
+            f"select count(*) from {first.key}.messages").fetchall())
         actions = {action for action, _, _, _ in fleet.audit}
         check("every action the authorizer saw was a read",
               actions <= READ_ACTIONS,
@@ -177,7 +178,8 @@ def main() -> int:
                 f"drop table {fleet.projects[0].key}.messages",
                 f"pragma {fleet.projects[0].key}.journal_mode = delete"):
             try:
-                fleet.connection().execute(statement)
+                fleet.read(first, lambda connection, statement=statement:
+                           connection.execute(statement))
                 denied.append(f"ALLOWED: {statement}")
             except Exception:
                 pass

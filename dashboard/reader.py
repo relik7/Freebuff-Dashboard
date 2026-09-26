@@ -342,7 +342,9 @@ def thread(fleet, name: str | None, thread_id: str | None, *,
         raise ReaderError(f"no thread {thread_id!r} in {project.label}", status=404)
 
     sql, kind_params = corpus.thread_parts(project.key, project.schema)
-    rows = fleet.connection().execute(sql, [*kind_params, thread_id]).fetchall()
+    params = [*kind_params, thread_id]
+    rows = fleet.read(
+        project, lambda connection: connection.execute(sql, params).fetchall())
     found = messages(rows)
     grouped = turns(found)
     if around is not None:

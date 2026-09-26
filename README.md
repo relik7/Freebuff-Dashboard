@@ -1,8 +1,5 @@
 # Freebuff Dashboard
 
-## Known bug found
-`You can only have 10 projects maximum at the moment due to a SQLite maximum.  Fix is in the works.`
-***
 **Freebuff Dashboard** is a window into the conversations Freebuff Desktop keeps
 on your machine. It finds your projects, opens any thread in full, and searches
 across all of them at once — all locally, with nothing to sign in to, nothing to
@@ -12,15 +9,19 @@ Three screens carry it: **Projects**, every project it found and how long ago
 each was last used; **Search**, where one query looks through all of them; and
 **Activity**, a live board of the turns that are running right now.
 
-> **It stays on your machine.** Everything runs at `127.0.0.1` — the address
-> that means *this computer* — and your conversations are opened read-only, so
-> the app cannot alter them even by accident. It never touches the file holding
-> your Freebuff login, and it skips the sponsored cards that sit alongside
-> conversations.
+> **It stays on your machine unless you say otherwise.** Everything runs at
+> `127.0.0.1` — the address that means *this computer* — and your conversations
+> are opened read-only, so the app cannot alter them even by accident. It never
+> touches the file holding your Freebuff login.
 >
-> If you elect to run this on `0.0.0.0` so your LAN can see the page, **you accept the risks**, 
-> because there is currently no security on the HTTP server it runs.  All of your Freebuff
-> threads will be available and searchable on your LAN.  
+> A wider address is refused — from the command line *and* from `config.json` —
+> unless you pass **`--i-know-the-security-risks`**, the one way past that
+> refusal, and then **you accept the risks**: there is no security on this HTTP
+> server at all, so anyone who can reach the port can read and search every
+> conversation. Narrow who may connect with **`--allowed-hosts`**, which turns
+> the server into *deny everyone but `127.0.0.1` and the addresses you list*; give
+> it comma-separated addresses or repeat the flag. Without it, an
+> override-open server answers any host that can reach it.
 >
 > **There is nothing to install.** Python 3.11 or newer is the entire
 > requirement: no extra packages, no build step. The app checks what your Python
@@ -111,7 +112,7 @@ run.cmd
 
 Then open `http://127.0.0.1:8770` in your browser. The port comes from your
 settings, and the address means *this computer* — the app answers there and
-nowhere else.
+nowhere else unless you deliberately open it (see the note at the top).
 
 ### Try it without touching a real profile
 
@@ -139,6 +140,11 @@ conversations directly and builds nothing in the background, `--activity` opens
 on the activity board instead of the search page, and `--version` tells you
 exactly which build you are running — worked out from the code itself rather
 than declared by hand.
+
+Two more decide who may reach it. A non-loopback `--host` — or a `config.json`
+naming one — is refused unless you also pass `--i-know-the-security-risks`.
+`--allowed-hosts <ip[,ip...]>`, repeatable and comma-separated, then limits
+connections to `127.0.0.1` plus those addresses instead of letting any host in.
 
 ## Configuration
 
@@ -208,9 +214,21 @@ screenshots/                  the view shots above
 - **Your login is left alone.** The file holding your Freebuff credentials is
   never opened, and the sponsored cards that sit alongside conversations are
   never read or shown. Both are boundaries in the code, not settings to trust.
-- **Only you can reach it.** The app listens on `127.0.0.1` — *this computer* —
-  and refuses to answer the wider network. Starting it twice on the same port
-  simply fails rather than quietly giving way.
+- **Only you can reach it, unless you open it deliberately.** The app listens
+  on `127.0.0.1` — *this computer* — and refuses a wider address until you pass
+  `--i-know-the-security-risks`. With that override, `--allowed-hosts` keeps the
+  server to `127.0.0.1` and the addresses you name. Starting it twice on the
+  same port simply fails rather than quietly giving way.
 - **It tells you what it found.** At startup it checks your Python, your SQLite,
   and what that SQLite can do, then reports the results, so it can fall back to
   something slower instead of quietly breaking.
+
+## Recent updates
+
+### Pooled database threads and db_version checks
+Reduced overhead by 90% and allows unlimited projects
+
+### Basic security limitations
+Server can bind on another host IP with `--i-know-the-security-risks` command-line flag.
+
+

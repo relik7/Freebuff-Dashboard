@@ -92,17 +92,21 @@ def running(fleet, seconds: float = 0.0,
     since = now - int(round(float(close_seconds) * 1000))
     rows: list[dict] = []
     unnamed: list[tuple] = []
-    connection = fleet.connection()
     for project in fleet.projects:
         if not project.readable or project.schema_limited:
             continue
-        try:
+
+        def gather(connection, project=project):
             listed = connection.execute(
                 corpus.board_threads(project.key, since,
                                      project.schema)).fetchall()
+            return listed, _last_texts(connection, project,
+                                       [entry["id"] for entry in listed])
+
+        try:
+            listed, said = fleet.read(project, gather)
         except sqlite3.Error:
             continue
-        said = _last_texts(connection, project, [row["id"] for row in listed])
         for row in listed:
             entry = _row(project, row, said.get(row["id"]))
             if not entry["model"]:
