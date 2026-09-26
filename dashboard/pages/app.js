@@ -1114,6 +1114,62 @@ function threadCard(project, thread, open) {
   return card;
 }
 
+/* A project's last activity is its newest thread of any kind, the archived
+   ones included: a project whose every thread is put away is idle since the
+   newest of them, not since the day it was archived. */
+function lastActivity(project) {
+  return [...project.open, ...project.closed, ...project.archived]
+    .reduce((newest, thread) => Math.max(newest, thread.updated_at), 0);
+}
+
+function projectCard(project) {
+  const activity = lastActivity(project);
+  const card = element("div", "tcard");
+  card.title = `${project.label}\n${project.path}\nlast activity` +
+    ` ${when(activity)}` +
+    (project.unreadable ? `\nunreadable: ${project.unreadable}` : "");
+  const text = element("div", "ttext");
+  text.append(element("div", "ttitle", project.label));
+  text.append(element("div", "tdetail", project.unreadable ||
+    `${project.counts.threads} thread(s) · ` +
+    `${project.counts.messages} message(s) · ${project.counts.open} open`));
+  card.append(text);
+  card.append(element("span", "tage", agoText(activity)));
+  card.addEventListener("click", () => scopeToProject(project));
+  return card;
+}
+
+/* The root view: an empty box over every project is the projects themselves,
+   newest activity first, and each card is the way into that project's own
+   list of threads — the same place its name in the tree opens. */
+function renderProjects() {
+  const pane = $("pane");
+  stopClock();
+  matches = [];
+  $("matchbar").hidden = true;
+  pane.replaceChildren();
+  const rows = [...state.projects].sort((one, two) =>
+    lastActivity(two) - lastActivity(one) || one.label.localeCompare(two.label));
+  const threads = rows.reduce((sum, project) => sum + project.counts.threads, 0);
+  const messages = rows.reduce((sum, project) => sum + project.counts.messages, 0);
+  const head = element("div", "threads-head");
+  head.append(element("h1", null, "Projects"));
+  head.append(element("div", "role",
+    `${rows.length} project(s) · ${threads} thread(s) · ` +
+    `${messages} message(s)`));
+  pane.append(head);
+  if (!rows.length) {
+    pane.append(element("div", "line dim", "No Freebuff projects found."));
+  } else {
+    const list = element("div", "tlist");
+    for (const project of rows) list.append(projectCard(project));
+    pane.append(list);
+  }
+  $("hits").textContent = `${rows.length} project(s) · ${threads} thread(s)`;
+  const scroller = pane.closest(".main");
+  if (scroller) scroller.scrollTop = 0;
+}
+
 function renderProjectThreads(project) {
   const pane = $("pane");
   stopClock();
@@ -1151,6 +1207,7 @@ function newSearch() {
   stopClock();
   state.query = "";
   state.scope = "all";
+  state.view = null;
   state.project = null;
   state.thread = null;
   pendingJump = null;
@@ -1230,6 +1287,11 @@ async function runSearch(push, arrival) {
       renderProjectThreads(project);
       return;
     }
+  }
+  if (!liveQuery() && !state.project && state.scope === "all") {
+    writeRoute(push === true);
+    renderProjects();
+    return;
   }
   writeRoute(push === true);
   $("hits").textContent = "searching…";
@@ -1356,6 +1418,9 @@ function wire() {
     renderTree();
     if (state.view === "threads") runSearch();
   });
+  /* The heading over the tree is the way home as well: the magnifier's own
+     landing, so there is still only one definition of where the root is. */
+  $("side-title").addEventListener("click", newSearch);
   $("search-open").addEventListener("click", newSearch);
   $("bar").addEventListener("submit", (event) => {
     event.preventDefault();

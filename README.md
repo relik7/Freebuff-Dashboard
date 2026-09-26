@@ -5,7 +5,8 @@ on your machine. It finds your projects, opens any thread in full, and searches
 across all of them at once — all locally, with nothing to sign in to, nothing to
 install, and no way for it to change the files it reads.
 
-Two screens carry it: **Search**, where one query looks through everything, and
+Three screens carry it: **Projects**, every project it found and how long ago
+each was last used; **Search**, where one query looks through all of them; and
 **Activity**, a live board of the turns that are running right now.
 
 > **It stays on your machine.** Everything runs at `127.0.0.1` — the address
@@ -24,19 +25,37 @@ Two screens carry it: **Search**, where one query looks through everything, and
 
 ## The views
 
+**Projects view** — the page you land on. Every project Freebuff knows about,
+the most recently active first, each card carrying its thread and message counts
+and how long ago it was last touched. Pick one and you are in that project's own
+list of threads; the **Projects** heading and the magnifying glass beside it are
+both the way back, and so is clearing the search box.
+
+![Projects view: every project it found, most recently active first](screenshots/projects-view.jpg)
+
+**Threads view** — one project's own list of threads. The ones touched most
+recently come first and the closed ones follow, each with its message count and
+how long ago it was last touched.
+
+![Threads view: one project's threads, the recent ones above the closed](screenshots/threads-view.jpg)
+
+**Thread conversation view** — a whole conversation from start to finish. Your
+messages and the agent's replies read as ordinary text, and everything else —
+the thinking, the tool calls, the files a turn changed — folds away into its own
+entry, so it is there when you want it and out of the way when you don't. A turn
+still running says so, and the conversation fills in as it goes.
+
+![Thread conversation view: one conversation, its thinking and tool run folded up, and a turn still running](screenshots/thread-conversation.jpg)
+
 **Global search** — one box for every project. Type words or an exact phrase,
 then narrow things down with the scopes, the categories (*user messages, agent
-responses, thinking, tool runs, file changes*) and a date range. Leave the box
-empty and it simply browses.
+responses, thinking, tool runs, file changes*) and a date range. The results
+come back grouped by project and thread, with your matches picked out where they
+fell. Leave the box empty over everything and the project list is what you get;
+leave it empty with the scope on a project or a thread and it browses that
+instead.
 
 ![Global search: the query, the filters along the top and the results below](screenshots/global-search.jpg)
-
-**Thread view** — a whole conversation from start to finish. Your messages and
-the agent's replies read as ordinary text, and everything else — the thinking,
-the tool calls, the files a turn changed — folds away into its own entry, so it
-is there when you want it and out of the way when you don't.
-
-![Thread view: one conversation, with its thinking, tool calls and diff card](screenshots/thread-view.jpg)
 
 ![the activity glyph: a pulse inside a rounded square](screenshots/activity-glyph.svg)  **Activity view** — the page at `/activity`, a live board of the turns in
 flight. In the sidebar of the search page its control is a pulse inside a
@@ -63,7 +82,8 @@ When you open the page, the server:
    files a turn changed folded away beside them.
 4. **Searches as you type** — words or an exact phrase, across the scopes and
    the five categories, with a date range and a *hide closed* switch; an empty
-   query browses instead.
+   query over everything is the project list, and an empty query inside a
+   project or a thread browses that instead.
 5. **Keeps itself current** — as Freebuff writes new messages, the page is
    updated on its own. There is no refresh button to press.
 6. **Draws the activity board** — `/activity`, or `python fb-dashboard.py
@@ -174,7 +194,7 @@ tests/                        the automatic checks that keep the app honest
 config.json.example           every setting, each with a note explaining it
 run.cmd, run.sh               the friendly way in: start the server
 run-mock.cmd, run-mock.sh     start it against a pretend profile instead
-screenshots/                  the three views shown above
+screenshots/                  the view shots above
 ```
 
 ## The guarantees
