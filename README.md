@@ -1,5 +1,8 @@
 # Freebuff Dashboard
 
+## Known bug found
+`You can only have 8 projects maximum at the moment due to a SQLite maximum.  Fix is in the works.`
+***
 **Freebuff Dashboard** is a window into the conversations Freebuff Desktop keeps
 on your machine. It finds your projects, opens any thread in full, and searches
 across all of them at once — all locally, with nothing to sign in to, nothing to
